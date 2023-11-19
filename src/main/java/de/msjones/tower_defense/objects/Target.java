@@ -1,6 +1,5 @@
 package de.msjones.tower_defense.objects;
 
-import de.msjones.tower_defense.levels.Level;
 import de.msjones.tower_defense.waypoints.Waypoint;
 import lombok.Getter;
 import lombok.Setter;
@@ -15,7 +14,7 @@ public class Target {
     @Setter
     @Getter
     private double speed;
-    private List<Waypoint> waypointList;
+    private final List<Waypoint> waypointList;
     private int currentWaypoint = 0;
     @Getter
     private boolean finished = false;

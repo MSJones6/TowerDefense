@@ -1,6 +1,7 @@
 package de.msjones.tower_defense;
 
 import de.msjones.tower_defense.waypoints.Waypoint;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.imageio.ImageIO;
 import java.awt.BasicStroke;
@@ -14,12 +15,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+@Slf4j
 public class BackgroundGenerator {
-    private static int WIDTH = 800;
-    private static int HEIGHT = 600;
-    private static int BORDER = 50;
+    private static final int WIDTH = 800;
+    private static final int HEIGHT = 600;
+    private static final int BORDER = 50;
 
-    public List<Waypoint> generateWaypointsAndMap(int waypointCount) {
+    private static final Random RANDOM = new Random();
+
+    public List<Waypoint> generateWaypointsAndMap(int waypointCount) throws IOException {
         BackgroundGenerator bg = new BackgroundGenerator();
         List<Waypoint> waypointList = bg.generateWaypoints(waypointCount);
         bg.generateMap(waypointList);
@@ -29,11 +33,10 @@ public class BackgroundGenerator {
     public List<Waypoint> generateWaypoints(int waypointCount) {
         List<Waypoint> waypointList = new ArrayList<>();
         waypointList.add(getFirstPoint());
-        double direction = waypointList.get(waypointList.size() - 1).getX() == 0 ? 3 : 6;
+        double direction = waypointList.get(0).getX() == 0 ? 3 : 6;
 
 
         double lastRealDirection = direction;
-        Waypoint lastWaypoint = null;
         for (int i = 0; i < waypointCount; ++i) {
             Waypoint source = waypointList.get(waypointList.size() - 1);
             Waypoint destination = getNextPoint(source, direction);
@@ -51,13 +54,12 @@ public class BackgroundGenerator {
             lastRealDirection = direction;
 
             waypointList.add(destination);
-            lastWaypoint = destination;
         }
 
         return waypointList;
     }
 
-    public void generateMap(List<Waypoint> waypointList) {
+    public void generateMap(List<Waypoint> waypointList) throws IOException {
         BufferedImage background = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
 
         Graphics2D g2d = background.createGraphics();
@@ -80,12 +82,12 @@ public class BackgroundGenerator {
         try {
             Waypoint lastWaypoint = waypointList.get(waypointList.size() - 1);
             InputStream is = this.getClass().getClassLoader().getResourceAsStream("pics/castle2.png");
-            BufferedImage castle = ImageIO.read(is);
-            System.out.println("castle.getHeight() = " + castle.getHeight());
-            System.out.println("castle.getWidth() = " + castle.getWidth());
-            g2d.drawImage(castle, (int) lastWaypoint.getX() - 23, (int) lastWaypoint.getY() - 58, null);
+            if (is != null) {
+                BufferedImage castle = ImageIO.read(is);
+                g2d.drawImage(castle, (int) lastWaypoint.getX() - 23, (int) lastWaypoint.getY() - 58, null);
+            }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new IOException(e);
         }
         g2d.dispose();
 
@@ -97,13 +99,12 @@ public class BackgroundGenerator {
         int x;
         int y;
 
-        Random r = new Random();
-        int start = r.nextInt(2);
+        int start = RANDOM.nextInt(2);
         if (start == 0) {
             x = 0;
-            y = r.nextInt(HEIGHT / 50) * 50 + 50;
+            y = RANDOM.nextInt(HEIGHT / 50) * 50 + 50;
         } else {
-            x = r.nextInt(WIDTH / 50) * 50 + 50;
+            x = RANDOM.nextInt(WIDTH / 50) * 50 + 50;
             y = 0;
         }
 
@@ -111,24 +112,14 @@ public class BackgroundGenerator {
     }
 
     private Waypoint getNextPoint(Waypoint lastPoint, double direction) {
-        Random r = new Random();
-        int length = r.nextInt(10) + 1;
-
         double x = lastPoint.getX();
         double y = lastPoint.getY();
 
-        if (direction > 0 && direction < 6) {
-            length = Math.min(length, (WIDTH - BORDER - (int) x) / 50);
-        } else if (direction > 6 && direction < 12) {
-            length = Math.min(length, (int) x / 50 - 1);
-        }
+        int length = getLength(direction, x, y);
 
-        if ((direction >= 0 && direction < 3) || (direction > 9 && direction <= 12)) {
-            length = Math.min(length, (int) y / 50 - 1);
-        } else if (direction > 3 && direction < 9) {
-            length = Math.min(length, (HEIGHT - BORDER - (int) y) / 50);
+        if (length == 0) {
+            return null;
         }
-
 
         if (direction > 0 && direction < 6) {
             x += length * 50;
@@ -142,28 +133,40 @@ public class BackgroundGenerator {
             y += length * 50;
         }
 
-        if (length == 0) {
-            return null;
-        }
-
-        System.out.println("Length: " + length + "; dir: " + direction + "; old: " + lastPoint.getX() + "/" + lastPoint.getY() + "; new: " + x + "/" + y);
+        log.debug("Length: " + length + "; dir: " + direction + "; old: " + lastPoint.getX() + "/" + lastPoint.getY() + "; new: " + x + "/" + y);
 
         return new Waypoint(x, y);
     }
 
-    private double getNextDirection(double direction) {
-        Random r = new Random();
-        return (r.nextInt(5) * 1.5 + direction - 3 + 24) % 12;
+    private int getLength(double direction, double x, double y) {
+        int length = RANDOM.nextInt(10) + 1;
+        if (direction > 0 && direction < 6) {
+            length = Math.min(length, (WIDTH - BORDER - (int) x) / 50);
+        } else if (direction > 6 && direction < 12) {
+            length = Math.min(length, (int) x / 50 - 1);
+        }
+
+        if ((direction >= 0 && direction < 3) || (direction > 9 && direction <= 12)) {
+            length = Math.min(length, (int) y / 50 - 1);
+        } else if (direction > 3 && direction < 9) {
+            length = Math.min(length, (HEIGHT - BORDER - (int) y) / 50);
+        }
+
+        return length;
     }
 
-    private void savePicture(BufferedImage background, String praefix) {
+    private double getNextDirection(double direction) {
+
+        return (RANDOM.nextInt(5) * 1.5 + direction - 3 + 24) % 12;
+    }
+
+    private void savePicture(BufferedImage background, String suffix) {
         // Speichere das generierte Bild
         try {
-            File output = new File("tower_defense_background" + praefix + ".png");
+            File output = new File("tower_defense_background" + suffix + ".png");
             ImageIO.write(background, "png", output);
-            System.out.println("Bild wurde erfolgreich erstellt: " + output.getAbsolutePath());
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage(), e);
         }
     }
 }

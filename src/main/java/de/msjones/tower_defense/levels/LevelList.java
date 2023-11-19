@@ -7,7 +7,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class LevelList {
-    public static List<Level> levelList = List.of(
+    private LevelList(){
+        // Do not allow to instantiate this class
+    }
+    public static List<Level> listOfLevels = List.of(
             initLevel1()
     );
 

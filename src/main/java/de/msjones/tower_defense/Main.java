@@ -3,6 +3,7 @@ package de.msjones.tower_defense;
 import de.msjones.tower_defense.levels.LevelList;
 import de.msjones.tower_defense.levels.TargetAppearance;
 import de.msjones.tower_defense.objects.Target;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.imageio.ImageIO;
 import javax.swing.JFrame;
@@ -20,50 +21,34 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
+@Slf4j
 public class Main extends JPanel implements ActionListener {
-    private List<Target> targetList = new ArrayList<>();
+    private final List<Target> targetList = new ArrayList<>();
 
-    private BufferedImage buffer;
-    //    private int[] waypointsX = {50, 150, 250, 350}; // X-Koordinaten der Wegpunkte
-//    private int[] waypointsY = {50, 250, 100, 200}; // Y-Koordinaten der Wegpunkte
-    private final int DELAY = 50; // Verzögerung für die Timer-Animation
+    private static final int DELAY = 50; // Verzögerung für die Timer-Animation
 
-    private final int TARGET_SIZE = 20;
-    private Timer timer;
+    private static final int TARGET_SIZE = 20;
 
-    private int level = 1;
-
-    public Main() {
+    public Main() throws IOException {
         BackgroundGenerator backgroundGenerator = new BackgroundGenerator();
 
-        backgroundGenerator.generateMap(LevelList.levelList.get(level - 1).getWaypointList());
+        int level = 1;
+        backgroundGenerator.generateMap(LevelList.listOfLevels.get(level - 1).waypointList());
 
         this.setPreferredSize(new Dimension(800, 600));
-        timer = new Timer(DELAY, this);
+        Timer timer = new Timer(DELAY, this);
         timer.start();
 
-        generateTargets(LevelList.levelList.get(level - 1).getTargetAppearanceList());
-//        Target t = new Target(waypointList);
-//        t.setSpeed(1);
-//        targetList.add(t);
-
-//        Target t = new Target(LevelList.levelList.get(level - 1));
-//        t.setSpeed(3.1);
-//        targetList.add(t);
-
-
-//        t = new Target(waypointList);
-//        t.setSpeed(.5);
-//        targetList.add(t);
+        generateTargets(LevelList.listOfLevels.get(level - 1).targetAppearanceList());
     }
 
     @Override
     public void paint(Graphics g) {
         super.paint(g);
 
+        BufferedImage buffer;
         try {
             File bg = new File("tower_defense_background.png");
             buffer = ImageIO.read(bg);
@@ -96,27 +81,28 @@ public class Main extends JPanel implements ActionListener {
         int oldTargetListSize = targetList.size();
         if (targetList.removeIf(Target::isFinished)) {
             int newTargetListSize = targetList.size();
-            System.out.println((oldTargetListSize - newTargetListSize) + " Leben verloren");
+            log.info((oldTargetListSize - newTargetListSize) + " Leben verloren");
         }
         repaint(); // Das Panel neu zeichnen, um die Bewegung anzuzeigen
     }
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            JFrame frame = new JFrame("Waypoint Movement");
-            frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-            frame.add(new Main());
-            frame.setVisible(true);
-            frame.pack();
+            try {
+                JFrame frame = new JFrame("Waypoint Movement");
+                frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+                frame.add(new Main());
+                frame.setVisible(true);
+                frame.pack();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         });
     }
 
     private void generateTargets(List<TargetAppearance> targetAppearanceList) {
         Runnable targetCreator = () -> {
-            Iterator<TargetAppearance> iterator = targetAppearanceList.listIterator();
-            while (iterator.hasNext()) {
-                TargetAppearance targetAppearance = iterator.next();
-
+            for (TargetAppearance targetAppearance : targetAppearanceList) {
                 try {
                     Thread.sleep(targetAppearance.getDelay());
                 } catch (InterruptedException e) {
