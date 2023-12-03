@@ -2,7 +2,9 @@ package de.msjones.tower_defense;
 
 import de.msjones.tower_defense.levels.LevelList;
 import de.msjones.tower_defense.levels.TargetAppearance;
+import de.msjones.tower_defense.objects.SimpleTower;
 import de.msjones.tower_defense.objects.Target;
+import de.msjones.tower_defense.objects.Tower;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.imageio.ImageIO;
@@ -17,15 +19,20 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
-public class Main extends JPanel implements ActionListener {
+public class Main extends JPanel implements ActionListener, MouseListener {
     private final List<Target> targetList = new ArrayList<>();
+    private final Set<Tower> towerList = new HashSet<>();
 
     private static final int DELAY = 50; // Verzögerung für die Timer-Animation
 
@@ -41,6 +48,8 @@ public class Main extends JPanel implements ActionListener {
         Timer timer = new Timer(DELAY, this);
         timer.start();
 
+        this.addMouseListener(this);
+
         generateTargets(LevelList.listOfLevels.get(level - 1).targetAppearanceList());
     }
 
@@ -53,13 +62,14 @@ public class Main extends JPanel implements ActionListener {
             File bg = new File("tower_defense_background.png");
             buffer = ImageIO.read(bg);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            log.error("Error while loading background: {}", e.getMessage(), e);
+            return;
         }
 
         Graphics2D g2d = buffer.createGraphics();
         g2d.drawImage(buffer, 0, 0, this);
 
-        targetList.forEach(e -> {
+        targetList.parallelStream().forEach(e -> {
             if (e.getSpeed() < 1) {
                 g2d.setColor(Color.GREEN);
             } else if (e.getSpeed() == 1) {
@@ -68,6 +78,11 @@ public class Main extends JPanel implements ActionListener {
                 g2d.setColor(Color.BLACK);
             }
             g2d.fillOval((int) e.getX() - TARGET_SIZE / 2, (int) e.getY() - TARGET_SIZE / 2, TARGET_SIZE, TARGET_SIZE);
+        });
+
+        towerList.parallelStream().forEach(e -> {
+            e.setAngleOnNearestTarget(targetList);
+            g2d.drawImage(e.getBufferedImage(), (int) e.getPosition().getX(), (int) e.getPosition().getY(), null);
         });
 
         g.drawImage(buffer, 0, 0, null);
@@ -86,6 +101,33 @@ public class Main extends JPanel implements ActionListener {
         repaint(); // Das Panel neu zeichnen, um die Bewegung anzuzeigen
     }
 
+    @Override
+    public void mouseClicked(MouseEvent e) {
+        Tower t = new SimpleTower(e.getX(), e.getY());
+        towerList.add(t);
+    }
+
+    @Override
+    public void mousePressed(MouseEvent e) {
+        // Nothing to do at the moment
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent e) {
+        // Nothing to do at the moment
+    }
+
+    @Override
+    public void mouseEntered(MouseEvent e) {
+        // Nothing to do at the moment
+    }
+
+    @Override
+    public void mouseExited(MouseEvent e) {
+        // Nothing to do at the moment
+    }
+
+
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             try {
@@ -95,7 +137,7 @@ public class Main extends JPanel implements ActionListener {
                 frame.setVisible(true);
                 frame.pack();
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                log.error("Error while loading the frame: {}", e.getMessage(), e);
             }
         });
     }
@@ -106,7 +148,8 @@ public class Main extends JPanel implements ActionListener {
                 try {
                     Thread.sleep(targetAppearance.getDelay());
                 } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+                    log.error("Error while Thread.sleep: {}", e.getMessage(), e);
+                    Thread.currentThread().interrupt();
                 }
 
                 targetList.add(targetAppearance.getTarget());
