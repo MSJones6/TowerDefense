@@ -10,7 +10,7 @@ public class LevelList {
     private LevelList(){
         // Do not allow to instantiate this class
     }
-    public static List<Level> listOfLevels = List.of(
+    public static final List<Level> listOfLevels = List.of(
             initLevel1()
     );
 
