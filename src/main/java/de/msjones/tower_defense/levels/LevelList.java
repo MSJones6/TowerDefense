@@ -27,7 +27,6 @@ public class LevelList {
         List<TargetAppearance> targetAppearanceList = new ArrayList<>();
         Target target = new Target(waypointList);
         target.setSpeed(3);
-        targetAppearanceList.add(new TargetAppearance(target, 1000));
         for (int i = 0; i < 20; ++i) {
             targetAppearanceList.add(new TargetAppearance(new Target(target), 500));
         }
